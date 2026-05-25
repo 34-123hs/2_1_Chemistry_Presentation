@@ -1,0 +1,7 @@
+# NNP 추론 서빙 API 의존성
+fastapi>=0.110
+uvicorn[standard]>=0.29
+pydantic>=2.6
+# GPU(CUDA) 빌드는 환경에 맞게 https://pytorch.org/get-started/ 에서 설치할 것
+torch>=2.2
+numpy>=1.24

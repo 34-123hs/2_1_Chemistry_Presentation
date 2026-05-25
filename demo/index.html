@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NNP 분자 완화 데모</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f4f3ee; --surface:#fff; --ink:#15171c; --soft:#5b616b;
+    --blue:#1f3bff; --coral:#ff5a36; --line:#e2ddd1;
+    --mono:"Space Mono",ui-monospace,monospace;
+    --shadow:0 1px 2px rgba(20,24,60,.05),0 10px 28px rgba(20,30,90,.07);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family:"Pretendard",system-ui,sans-serif; color:var(--ink);
+    background:var(--paper);
+    background-image:linear-gradient(rgba(31,59,255,.05) 1px,transparent 1px),
+                     linear-gradient(90deg,rgba(31,59,255,.05) 1px,transparent 1px);
+    background-size:38px 38px;
+  }
+  header{padding:22px 28px 6px; display:flex; align-items:baseline; gap:14px; flex-wrap:wrap}
+  header .kick{font-family:var(--mono); color:var(--blue); font-size:12px; letter-spacing:.18em; text-transform:uppercase}
+  header h1{font-size:26px; font-weight:800; margin:0; letter-spacing:-.02em}
+  header a{margin-left:auto; font-family:var(--mono); font-size:12px; color:var(--blue); text-decoration:none}
+  header a:hover{text-decoration:underline}
+  .sub{padding:0 28px 14px; color:var(--soft); font-size:14px}
+
+  main{display:grid; grid-template-columns:200px 1fr; gap:18px; padding:0 28px 28px; align-items:start}
+  .panel{background:var(--surface); border:1px solid var(--line); border-radius:16px; box-shadow:var(--shadow); padding:16px}
+  .panel h2{font-size:14px; margin:0 0 10px; font-weight:800}
+  .hint{font-size:12px; color:var(--soft); line-height:1.5}
+
+  /* 원소 팔레트 */
+  .palette{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px}
+  .el-chip{
+    width:42px; height:42px; border-radius:50%; border:2px solid rgba(0,0,0,.12);
+    background:var(--c); color:var(--t,#fff); font-weight:800; font-size:15px; cursor:grab;
+    display:flex; align-items:center; justify-content:center; user-select:none;
+    box-shadow:var(--shadow); transition:transform .12s ease;
+  }
+  .el-chip:hover{transform:translateY(-2px)}
+  .el-chip.sel{outline:3px solid var(--blue); outline-offset:2px}
+
+  /* 캔버스 */
+  .stage-wrap{display:flex; flex-direction:column; gap:12px}
+  #stage{
+    position:relative; width:100%; height:440px; border:1px dashed var(--line);
+    border-radius:14px; background:repeating-linear-gradient(0deg,transparent,transparent 21px,rgba(0,0,0,.025) 22px),
+                                  repeating-linear-gradient(90deg,transparent,transparent 21px,rgba(0,0,0,.025) 22px);
+    overflow:hidden;
+  }
+  #stage.empty::after{
+    content:"여기로 원소를 드래그하세요 (또는 팔레트 선택 후 클릭)";
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    color:var(--soft); font-size:14px;
+  }
+  .atom{
+    position:absolute; width:34px; height:34px; border-radius:50%;
+    transform:translate(-50%,-50%); display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:13px; border:2px solid rgba(0,0,0,.18);
+    box-shadow:0 2px 6px rgba(0,0,0,.18); transition:left .16s linear, top .16s linear;
+    cursor:grab;
+  }
+
+  /* 컨트롤 */
+  .controls{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+  button.act{
+    font-family:var(--mono); font-weight:700; font-size:13px; color:#fff; border:none;
+    border-radius:999px; padding:9px 18px; cursor:pointer; box-shadow:var(--shadow);
+    transition:transform .12s ease, background .12s ease;
+  }
+  button.act:hover{transform:translateY(-2px)}
+  button.act:disabled{opacity:.45; cursor:not-allowed; transform:none}
+  .btn-start{background:var(--blue)}
+  .btn-stop{background:var(--coral)}
+  .btn-clear{background:#6b7280}
+  .hud{display:flex; gap:18px; font-family:var(--mono); font-size:13px; color:var(--ink); margin-left:auto}
+  .hud b{color:var(--blue)}
+  .status{font-size:12px; color:var(--soft)}
+  .status .badge{font-family:var(--mono); padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700}
+  .badge.demo{background:#fff0d6; color:#9a6b00}
+  .badge.live{background:#e3f9ee; color:#0e7a52}
+  .badge.err{background:#ffe1da; color:#c0341b}
+</style>
+</head>
+<body>
+  <header>
+    <span class="kick">Interactive · NNP</span>
+    <h1>분자 완화 시뮬레이터</h1>
+    <a href="../">← 발표(PPT)로</a>
+  </header>
+  <p class="sub">원소를 캔버스에 배치하고 <b>시작</b>을 누르면, 모델이 매 스텝의 원자 위치를 돌려줘 분자가 평형 구조로 완화됩니다. <b>정지</b>로 멈춥니다.</p>
+
+  <main>
+    <!-- 왼쪽: 팔레트 + 안내 -->
+    <section class="panel">
+      <h2>원소 팔레트</h2>
+      <div class="palette" id="palette"></div>
+      <p class="hint">칩을 캔버스로 <b>드래그</b>하거나, 칩을 클릭해 선택한 뒤 캔버스를 클릭해 배치하세요. 배치한 원자는 시작 전 드래그로 옮길 수 있습니다.</p>
+    </section>
+
+    <!-- 오른쪽: 캔버스 + 컨트롤 -->
+    <section class="panel stage-wrap">
+      <div id="stage" class="empty"></div>
+      <div class="controls">
+        <button class="act btn-start" id="btnStart">▶ 시작</button>
+        <button class="act btn-stop" id="btnStop" disabled>■ 정지</button>
+        <button class="act btn-clear" id="btnClear">비우기</button>
+        <div class="hud">
+          <span>step <b id="hudStep">0</b></span>
+          <span>energy <b id="hudEnergy">–</b></span>
+          <span>atoms <b id="hudN">0</b></span>
+        </div>
+      </div>
+      <div class="status">백엔드: <span class="badge demo" id="modeBadge">데모(로컬 계산)</span> <span id="statusMsg"></span></div>
+    </section>
+  </main>
+
+<script>
+  // ===================================================================
+  // 백엔드 연결: EC2 준비되면 아래 주소만 채우면 /step 을 호출한다.
+  //   ⚠️ 이 페이지는 https(github.io)이므로 API도 https 여야 브라우저가 막지 않음.
+  // ===================================================================
+  const API_BASE = ""; // 예) "https://api.example.com"  (비우면 로컬 계산으로 동작)
+
+  // CPK 색상(원소별)
+  const ELEMENTS = {
+    H: {c:"#e9e9ee", t:"#333"}, C: {c:"#33363b", t:"#fff"},
+    N: {c:"#3050f8", t:"#fff"},  O: {c:"#ff2d2d", t:"#fff"},
+    F: {c:"#7fe060", t:"#234"},
+  };
+  const TARGET = 72;     // 목표 간격(px) — 로컬 완화 기준
+  const TICK   = 180;    // 스텝 간격(ms)
+  const R      = 20;     // 원자 반경(경계 클램프용)
+
+  const stage = document.getElementById("stage");
+  const palette = document.getElementById("palette");
+  let atoms = [];        // {el, x, y, dom}
+  let selectedEl = null;
+  let running = false, stepCount = 0, timer = null;
+
+  // --- 팔레트 생성 ---
+  for (const [sym, sty] of Object.entries(ELEMENTS)) {
+    const chip = document.createElement("button");
+    chip.className = "el-chip"; chip.textContent = sym;
+    chip.draggable = true;
+    chip.style.setProperty("--c", sty.c); chip.style.setProperty("--t", sty.t);
+    chip.dataset.el = sym;
+    chip.addEventListener("dragstart", (e) => e.dataTransfer.setData("text/plain", sym));
+    chip.addEventListener("click", () => {
+      selectedEl = (selectedEl === sym) ? null : sym;
+      [...palette.children].forEach((c) => c.classList.toggle("sel", c.dataset.el === selectedEl));
+    });
+    palette.appendChild(chip);
+  }
+
+  // --- 캔버스 드롭/클릭으로 원자 추가 ---
+  stage.addEventListener("dragover", (e) => e.preventDefault());
+  stage.addEventListener("drop", (e) => {
+    e.preventDefault();
+    const el = e.dataTransfer.getData("text/plain");
+    const r = stage.getBoundingClientRect();
+    addAtom(el, e.clientX - r.left, e.clientY - r.top);
+  });
+  stage.addEventListener("click", (e) => {
+    if (!selectedEl || e.target !== stage) return;
+    const r = stage.getBoundingClientRect();
+    addAtom(selectedEl, e.clientX - r.left, e.clientY - r.top);
+  });
+
+  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+  function addAtom(el, x, y) {
+    if (!ELEMENTS[el]) return;
+    const W = stage.clientWidth, H = stage.clientHeight;
+    x = clamp(x, R, W - R); y = clamp(y, R, H - R);
+    const dom = document.createElement("div");
+    dom.className = "atom"; dom.textContent = el;
+    dom.style.background = ELEMENTS[el].c; dom.style.color = ELEMENTS[el].t;
+    dom.style.left = x + "px"; dom.style.top = y + "px";
+    stage.appendChild(dom);
+    const atom = { el, x, y, dom };
+    atoms.push(atom);
+    enableDrag(atom);
+    stage.classList.remove("empty");
+    updateHud();
+  }
+
+  // 시작 전 원자를 드래그로 재배치
+  function enableDrag(atom) {
+    atom.dom.addEventListener("pointerdown", (e) => {
+      if (running) return;
+      e.preventDefault(); atom.dom.setPointerCapture(e.pointerId);
+      const move = (ev) => {
+        const r = stage.getBoundingClientRect();
+        atom.x = clamp(ev.clientX - r.left, R, stage.clientWidth - R);
+        atom.y = clamp(ev.clientY - r.top, R, stage.clientHeight - R);
+        atom.dom.style.left = atom.x + "px"; atom.dom.style.top = atom.y + "px";
+      };
+      const up = (ev) => {
+        atom.dom.releasePointerCapture(e.pointerId);
+        atom.dom.removeEventListener("pointermove", move);
+        atom.dom.removeEventListener("pointerup", up);
+      };
+      atom.dom.addEventListener("pointermove", move);
+      atom.dom.addEventListener("pointerup", up);
+    });
+  }
+
+  // --- 로컬 플레이스홀더 동역학 (백엔드 폴백) ---
+  function localStep() {
+    const n = atoms.length, cx = stage.clientWidth / 2, cy = stage.clientHeight / 2;
+    const next = atoms.map((a) => ({ x: a.x, y: a.y }));
+    let energy = 0;
+    for (let i = 0; i < n; i++) {
+      let fx = 0, fy = 0;
+      for (let j = 0; j < n; j++) {
+        if (i === j) continue;
+        const dx = atoms[i].x - atoms[j].x, dy = atoms[i].y - atoms[j].y;
+        const d = Math.hypot(dx, dy) || 1e-3;
+        const mag = -(d - TARGET) / TARGET;        // 가까우면 밀고, 멀면 당김
+        fx += (dx / d) * mag; fy += (dy / d) * mag;
+        energy += (d - TARGET) * (d - TARGET);
+      }
+      fx += (cx - atoms[i].x) * 0.02; fy += (cy - atoms[i].y) * 0.02; // 약한 센터링
+      next[i].x = atoms[i].x + fx * 0.9;
+      next[i].y = atoms[i].y + fy * 0.9;
+    }
+    return { next, energy: energy * 0.5 };
+  }
+
+  // --- 한 스텝: 백엔드(/step) 또는 로컬 ---
+  async function computeStep() {
+    if (API_BASE) {
+      try {
+        const body = { atoms: atoms.map((a) => ({ element: a.el, x: a.x, y: a.y, z: 0 })), dt: 0.08 };
+        const r = await fetch(API_BASE.replace(/\/$/, "") + "/step", {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+        });
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        const j = await r.json();
+        setMode("live", "EC2 /step");
+        return { next: j.atoms.map((p) => ({ x: p[0], y: p[1] })), energy: j.energy };
+      } catch (e) {
+        setMode("err", "연결 실패 → 로컬 계산");
+        return localStep();
+      }
+    }
+    return localStep();
+  }
+
+  async function tick() {
+    if (!running) return;
+    const { next, energy } = await computeStep();
+    const W = stage.clientWidth, H = stage.clientHeight;
+    atoms.forEach((a, i) => {
+      a.x = clamp(next[i].x, R, W - R); a.y = clamp(next[i].y, R, H - R);
+      a.dom.style.left = a.x + "px"; a.dom.style.top = a.y + "px";
+    });
+    stepCount++; updateHud(energy);
+    if (running) timer = setTimeout(tick, TICK);
+  }
+
+  function start() {
+    if (atoms.length < 2) { setStatus("원소를 2개 이상 배치하세요."); return; }
+    running = true; stepCount = 0;
+    document.getElementById("btnStart").disabled = true;
+    document.getElementById("btnStop").disabled = false;
+    setStatus("");
+    tick();
+  }
+  function stop() {
+    running = false; clearTimeout(timer);
+    document.getElementById("btnStart").disabled = false;
+    document.getElementById("btnStop").disabled = true;
+  }
+  function clearAll() {
+    stop(); atoms.forEach((a) => a.dom.remove()); atoms = [];
+    stepCount = 0; stage.classList.add("empty"); updateHud();
+  }
+
+  // --- HUD/상태 ---
+  function updateHud(energy) {
+    document.getElementById("hudStep").textContent = stepCount;
+    document.getElementById("hudN").textContent = atoms.length;
+    if (energy !== undefined) document.getElementById("hudEnergy").textContent = energy.toFixed(1);
+  }
+  function setStatus(msg) { document.getElementById("statusMsg").textContent = msg; }
+  function setMode(kind, label) {
+    const b = document.getElementById("modeBadge");
+    b.className = "badge " + kind;
+    b.textContent = kind === "live" ? "EC2 연결됨" : kind === "err" ? "연결 실패(로컬)" : "데모(로컬 계산)";
+    setStatus(label || "");
+  }
+
+  document.getElementById("btnStart").addEventListener("click", start);
+  document.getElementById("btnStop").addEventListener("click", stop);
+  document.getElementById("btnClear").addEventListener("click", clearAll);
+
+  // 초기 안내: 백엔드 미설정이면 데모(로컬) 배지
+  setMode(API_BASE ? "live" : "demo", API_BASE ? "" : "API_BASE 미설정");
+</script>
+</body>
+</html>
