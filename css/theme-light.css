@@ -1,0 +1,326 @@
+/* =====================================================================
+   theme-light.css — "랩 노트북 × 데이터 대시보드" 라이트 테마
+   reveal.js 기본 white.css 위에 덮어쓰는 커스텀.
+
+   ⚠️ 프로젝트 규칙
+   1) 다크 모드 금지. 배경은 항상 밝게(종이톤), 글자는 어둡게.
+   2) AI 느낌의 "천천히 떠오르는" 자동 페이드 인 금지.
+      → 콘텐츠 자동 등장 애니메이션 없음. 인터랙션(호버/클릭/데모)만 사용.
+   ===================================================================== */
+
+:root {
+  --paper:     #f4f3ee;   /* 따뜻한 종이 배경 */
+  --surface:   #ffffff;   /* 카드 표면 */
+  --ink:       #15171c;   /* 본문 글자 */
+  --ink-soft:  #5b616b;   /* 보조 텍스트 */
+  --blue:      #1f3bff;   /* 주 강조 (계산/병렬) */
+  --blue-soft: #e7ebff;
+  --coral:     #ff5a36;   /* 보조 강조 (하이라이트) */
+  --coral-soft:#ffe6df;
+  --teal:      #0e9f6e;   /* 데이터(화학) */
+  --line:      #e2ddd1;   /* 경계선 */
+  --grid:      rgba(31,59,255,0.055);
+  --shadow:    0 1px 2px rgba(20,24,60,.05), 0 10px 28px rgba(20,30,90,.07);
+  --shadow-hi: 0 2px 6px rgba(20,24,60,.08), 0 18px 44px rgba(20,30,90,.12);
+  --mono: "Space Mono", ui-monospace, monospace;
+}
+
+/* ---- 배경: 종이 + 블루프린트 그리드 (고정) ---- */
+:root { --r-background-color: var(--paper); }
+.reveal-viewport, body { background: var(--paper); }
+.reveal .backgrounds { background: transparent; }
+body::before {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 38px 38px;
+}
+body::after {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(60% 50% at 88% 6%, rgba(31,59,255,.06), transparent 70%),
+    radial-gradient(50% 45% at 4% 96%, rgba(255,90,54,.05), transparent 70%);
+}
+
+/* ---- 타이포 ---- */
+.reveal {
+  font-family: "Pretendard", "Pretendard Variable", system-ui, sans-serif;
+  color: var(--ink); font-size: 30px;
+}
+.reveal .slides { text-align: left; }
+.reveal .slides section { line-height: 1.5; }
+.mono, .kicker { font-family: var(--mono); }
+
+.reveal h1 { font-size: 2.3em; line-height: 1.12; letter-spacing: -.025em; font-weight: 800; margin: 0; }
+.reveal h2 {
+  font-size: 1.55em; line-height: 1.15; letter-spacing: -.02em; font-weight: 800;
+  margin: 0 0 .55em; color: var(--ink);
+}
+.reveal h3 { font-size: .92em; font-weight: 800; margin: 0 0 .25em; }
+.reveal p, .reveal li { color: var(--ink); }
+.reveal em { color: var(--coral); font-style: normal; font-weight: 700; }
+.reveal strong { font-weight: 800; }
+.reveal a { color: var(--blue); text-decoration: none; }
+
+/* 강조 하이라이트(형광펜 느낌) */
+.hl { background: linear-gradient(transparent 56%, rgba(255,90,54,.30) 56%); padding: 0 .04em; font-weight: 800; }
+
+/* 키커(섹션 라벨) */
+.kicker {
+  color: var(--blue); font-size: .5em; font-weight: 700; letter-spacing: .22em;
+  text-transform: uppercase; margin: 0 0 .7em;
+}
+.note { color: var(--ink-soft); font-size: .58em; margin-top: .9em; line-height: 1.5; }
+.note.inline { margin: 0; }
+
+/* =====================================================================
+   표지
+   ===================================================================== */
+.title-block { position: relative; z-index: 2; }
+.title-block h1 { margin: .1em 0 .3em; }
+.title-block .subtitle { color: var(--ink-soft); font-size: .62em; letter-spacing: .02em; }
+.title-block .byline { display: flex; gap: .7em; margin-top: 1.4em; }
+.title-block .person {
+  font-size: .58em; background: var(--surface); border: 1px solid var(--line);
+  border-radius: 999px; padding: .35em 1em; box-shadow: var(--shadow);
+}
+.title-block .person b { font-family: var(--mono); color: var(--blue); margin-right: .35em; }
+.watermark {
+  position: absolute; right: -.1em; bottom: -.15em; z-index: 0;
+  font-family: var(--mono); font-size: 7em; font-weight: 700;
+  color: rgba(31,59,255,.05); user-select: none; letter-spacing: -.04em;
+}
+
+/* =====================================================================
+   목차 베이스토 (클릭 이동)
+   ===================================================================== */
+.bento { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: .3em; }
+.tile {
+  display: flex; flex-direction: column; gap: .25em; padding: .85em 1em;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
+  box-shadow: var(--shadow); transition: transform .14s ease, box-shadow .14s ease, border-color .14s ease;
+  position: relative; overflow: hidden;
+}
+.tile:hover { transform: translateY(-4px); box-shadow: var(--shadow-hi); border-color: var(--blue); }
+.tile .t-num { font-family: var(--mono); font-size: .55em; color: var(--blue); font-weight: 700; }
+.tile .t-title { font-size: .7em; font-weight: 800; color: var(--ink); }
+.tile .t-desc { font-size: .5em; color: var(--ink-soft); }
+.tile.big { grid-column: span 1; }
+.tile.accent { background: var(--blue); border-color: var(--blue); }
+.tile.accent .t-num, .tile.accent .t-title, .tile.accent .t-desc { color: #fff; }
+.tile.accent:hover { border-color: #fff; }
+.tile.coral { background: var(--coral); border-color: var(--coral); }
+.tile.coral .t-num, .tile.coral .t-title, .tile.coral .t-desc { color: #fff; }
+
+/* =====================================================================
+   레이아웃: split(반반) / pane
+   ===================================================================== */
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: center; }
+.split.wide-left  { grid-template-columns: 1.5fr 1fr; }
+.split.wide-right { grid-template-columns: 1fr 1.4fr; }
+.pane { min-width: 0; }
+.pane.lead .huge-stat { font-size: 2.4em; font-weight: 800; line-height: 1; margin: 0 0 .25em; }
+.pane.lead p { font-size: .72em; margin: .5em 0; }
+.lead-line { font-size: .82em; margin: 0 0 .5em; }
+
+.big-list { list-style: none; padding: 0; margin: 0; font-size: .76em; }
+.big-list li { position: relative; padding-left: 1.2em; margin: .55em 0; }
+.big-list li::before { content: "▸"; color: var(--coral); position: absolute; left: 0; font-weight: 700; }
+
+/* 카드 공통 */
+.card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
+  padding: 1em 1.1em; box-shadow: var(--shadow);
+}
+.hoverable { transition: transform .14s ease, box-shadow .14s ease; }
+.hoverable:hover { transform: translateY(-4px); box-shadow: var(--shadow-hi); }
+.card-tag {
+  display: inline-block; font-size: .42em; letter-spacing: .14em; font-weight: 700;
+  color: var(--blue); background: var(--blue-soft); border-radius: 6px;
+  padding: .25em .6em; margin-bottom: .5em;
+}
+.card-tag.coral-tag { color: var(--coral); background: var(--coral-soft); }
+.card h3 { font-size: .85em; }
+.card p { font-size: .58em; color: var(--ink-soft); margin: 0; }
+.card small { display: block; font-size: .82em; color: var(--ink-soft); margin-top: .15em; font-weight: 400; }
+.mini-bento { display: grid; gap: 14px; }
+
+/* =====================================================================
+   파이프라인 (상태 → 힘 → ...)
+   ===================================================================== */
+.pipeline { display: flex; align-items: stretch; gap: .35em; margin: .6em 0; }
+.node {
+  flex: 1; display: flex; flex-direction: column; justify-content: center; gap: .15em;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+  padding: 1.1em .8em; box-shadow: var(--shadow); font-weight: 800; font-size: .9em; text-align: center;
+}
+.node small { font-weight: 400; color: var(--ink-soft); font-size: .55em; }
+.node .n-label { font-size: .4em; letter-spacing: .14em; color: var(--blue); }
+.node.final { background: var(--blue); color: #fff; border-color: var(--blue); }
+.node.final .n-label { color: #cdd6ff; }
+.pipeline .link { align-self: center; color: var(--coral); font-size: 1.3em; font-weight: 700; }
+
+/* =====================================================================
+   인터랙티브 직렬/병렬 데모
+   ===================================================================== */
+.sp-demo { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin: .3em 0; }
+.lane {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
+  padding: 1.1em 1.2em; box-shadow: var(--shadow);
+}
+.lane.parallel { border-color: var(--blue); }
+.lane-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: .7em; }
+.lane-name { font-size: .58em; font-weight: 700; letter-spacing: .08em; }
+.lane.serial   .lane-name { color: var(--coral); }
+.lane.parallel .lane-name { color: var(--blue); }
+.readout { font-size: .5em; color: var(--ink-soft); }
+.readout b { font-family: var(--mono); font-size: 1.2em; color: var(--ink); margin-left: .3em; }
+.paint-grid {
+  display: grid; grid-template-columns: repeat(var(--cols, 12), 1fr); gap: 3px;
+  padding: .5em; background: var(--paper); border: 1px solid var(--line); border-radius: 10px;
+  max-width: 300px; margin: .1em auto 0;
+}
+.cell { aspect-ratio: 1 / 1; border-radius: 2px; background: #eae6db; transition: background .06s linear, transform .06s ease; }
+.lane.serial   .cell.on { background: var(--coral); }
+.lane.parallel .cell.on { background: var(--blue); transform: scale(1.06); }
+.lane-note { font-size: .5em; color: var(--ink-soft); margin: .6em 0 0; }
+.demo-bar { display: flex; align-items: center; gap: 1em; margin-top: 1em; }
+.runbtn {
+  font-family: var(--mono); font-size: .56em; font-weight: 700; color: #fff;
+  background: var(--blue); border: none; border-radius: 999px; padding: .7em 1.6em;
+  cursor: pointer; box-shadow: var(--shadow); transition: transform .12s ease, background .12s ease;
+}
+.runbtn:hover { transform: translateY(-2px); background: #1730e0; }
+.runbtn:active { transform: translateY(0); }
+.verdict { font-size: .56em; font-weight: 700; color: var(--coral); }
+.ref-fig {
+  display: flex; align-items: center; gap: .55em; margin-left: auto;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+  padding: .4em .7em; box-shadow: var(--shadow);
+}
+.ref-fig:hover { box-shadow: var(--shadow-hi); }
+.ref-fig img { height: 26px; width: auto; }
+.ref-fig img.broken { display: none; }
+.ref-cap { font-size: .42em; color: var(--ink-soft); line-height: 1.2; max-width: 9em; }
+
+/* =====================================================================
+   모델 계보 (병렬 비교)
+   ===================================================================== */
+.duo { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: .3em; }
+.duo-card {
+  position: relative; background: var(--surface); border: 1px solid var(--line);
+  border-radius: 18px; padding: 1.2em 1.3em; box-shadow: var(--shadow); border-top: 5px solid #c9cdd6;
+}
+.duo-card.ours { border-top-color: var(--coral); background: linear-gradient(180deg, #fff, #fff7f4); }
+.duo-num { font-size: 1.4em; color: var(--ink-soft); font-weight: 700; }
+.duo-card.ours .duo-num { color: var(--coral); }
+.duo-card h3 { font-size: 1em; margin: .2em 0 .4em; }
+.duo-card h3 small { font-size: .55em; color: var(--ink-soft); font-weight: 400; font-family: var(--mono); }
+.duo-card h3 .ours-tag { color: var(--coral); font-weight: 700; letter-spacing: .1em; }
+.duo-card p { font-size: .68em; margin: 0 0 .6em; }
+.tags { list-style: none; display: flex; gap: .4em; flex-wrap: wrap; padding: 0; margin: 0; }
+.tags li { font-size: .5em; background: var(--paper); border: 1px solid var(--line); border-radius: 999px; padding: .3em .8em; font-weight: 700; }
+.tags li.good { color: var(--teal); border-color: var(--teal); }
+.tags li.bad  { color: var(--ink-soft); }
+
+/* =====================================================================
+   챕터 구분 슬라이드
+   ===================================================================== */
+.divider { text-align: left; }
+.divider .big-chapter { font-size: 5.5em; font-weight: 700; line-height: .9; color: var(--blue-soft); margin: 0; }
+.divider h2 { font-size: 2.6em; margin: -.2em 0 0; }
+.div-sub { display: block; font-size: .32em; font-weight: 700; color: var(--ink-soft); letter-spacing: .02em; margin-top: .4em; }
+
+/* =====================================================================
+   수식 카드
+   ===================================================================== */
+.formula-card {
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 18px;
+  box-shadow: var(--shadow); padding: 1.2em; min-height: 3.2em;
+  border-left: 6px solid var(--blue);
+}
+.formula-card .MathJax { font-size: 1.15em !important; }
+
+/* =====================================================================
+   차트 베이스토
+   ===================================================================== */
+.chart-bento { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.chart-card {
+  margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
+  padding: .8em; box-shadow: var(--shadow); text-align: center;
+}
+.chart-card figcaption { font-size: .5em; color: var(--ink-soft); margin-top: .4em; font-weight: 700; }
+.chip-in, .chip-out { font-size: .8em; font-weight: 700; padding: .12em .5em; border-radius: 6px; }
+.chip-in  { color: var(--blue); background: var(--blue-soft); }
+.chip-out { color: var(--coral); background: var(--coral-soft); }
+
+/* =====================================================================
+   입력→출력 스키마틱
+   ===================================================================== */
+.io-schema { display: flex; align-items: center; justify-content: center; gap: .5em; flex-wrap: wrap; margin: .5em 0; }
+.io-schema .box {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+  padding: .7em 1em; font-size: .68em; font-weight: 700; text-align: center; line-height: 1.3;
+  box-shadow: var(--shadow);
+}
+.io-schema .box small { color: var(--ink-soft); font-weight: 400; }
+.io-schema .box.accent { background: var(--blue); color: #fff; border-color: var(--blue); }
+.io-schema .box.nn { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+.io-schema .arrow { color: var(--coral); font-size: 1.1em; font-weight: 700; }
+.io-schema.big .box { font-size: .82em; padding: .9em 1.2em; }
+.io-schema.summary .box { font-size: .56em; padding: .55em .8em; box-shadow: none; }
+.io-schema.summary .arrow { font-size: .85em; }
+
+.train-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 1.1em; }
+.train-card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: .9em 1.1em; box-shadow: var(--shadow); font-size: .66em; }
+
+/* =====================================================================
+   큰 질문 슬라이드
+   ===================================================================== */
+.big-question { text-align: center; }
+.big-question .q-mark { font-family: var(--mono); font-size: 4em; font-weight: 700; color: var(--coral); line-height: 1; margin: 0 0 .1em; }
+.big-question h2 { font-size: 1.9em; line-height: 1.3; }
+
+/* =====================================================================
+   MD 사이클
+   ===================================================================== */
+.cycle { counter-reset: step; list-style: none; padding: 0; margin: 0; }
+.cycle li {
+  position: relative; background: var(--surface); border: 1px solid var(--line);
+  border-radius: 12px; padding: .7em .9em .7em 2.8em; margin: .5em 0; font-size: .68em; box-shadow: var(--shadow);
+}
+.cycle li small { color: var(--ink-soft); font-weight: 400; }
+.cycle li::before {
+  counter-increment: step; content: counter(step);
+  position: absolute; left: .55em; top: 50%; transform: translateY(-50%);
+  width: 1.7em; height: 1.7em; border-radius: 50%; background: var(--blue); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .82em; font-family: var(--mono);
+}
+
+/* =====================================================================
+   정리 베이스토 + 감사
+   ===================================================================== */
+.take-bento { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 1.1em; }
+.take-bento .card { text-align: left; }
+.take-bento .card-tag { background: var(--paper); color: var(--ink-soft); }
+.good-card { border-top: 4px solid var(--teal); }
+.good-card .card-tag { color: var(--teal); }
+.warn-card { border-top: 4px solid var(--coral); }
+.warn-card .card-tag { color: var(--coral); }
+.thanks { margin-top: 1.2em; font-size: 1em; font-weight: 800; color: var(--blue); }
+.thanks .mono { color: var(--ink); }
+
+/* =====================================================================
+   슬라이드 번호 / 진행바 색
+   ===================================================================== */
+.reveal .progress { color: var(--blue); height: 4px; }
+.reveal .slide-number { background: transparent; color: var(--ink-soft); font-family: var(--mono); }
+.reveal .controls { color: var(--blue); }
+
+/* =====================================================================
+   규칙 2 강제: 느린 등장 애니메이션 제거 (fragment 사용 시에도 즉시)
+   ===================================================================== */
+.reveal .slides section .fragment { transition: none !important; }
+.reveal .slides section .fragment.visible { opacity: 1 !important; transform: none !important; }

@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>인공신경망을 이용한 화학 계산의 가속화</title>
+
+  <!-- Reveal.js core + 라이트(white) 베이스 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css" id="theme">
+
+  <!-- 폰트: Pretendard(한글) + Space Mono(기술적 라벨/숫자) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+  <!-- 프로젝트 커스텀 라이트 테마 -->
+  <link rel="stylesheet" href="css/theme-light.css">
+</head>
+<body>
+  <div class="reveal">
+    <div class="slides">
+
+      <!-- ====================== 0. 표지 ====================== -->
+      <section data-index="0">
+        <div class="watermark">E = f(𝐫)</div>
+        <div class="title-block">
+          <p class="kicker">계산화학 × 머신러닝 · 2026</p>
+          <h1>인공신경망을 이용한<br><span class="hl">화학 계산</span>의 가속화</h1>
+          <p class="subtitle mono">Accelerating Chemical Computation with Neural Networks</p>
+          <div class="byline">
+            <span class="person"><b>2518</b> 최지완</span>
+            <span class="person"><b>2509</b> 김은찬</span>
+          </div>
+        </div>
+        <aside class="notes">
+          안녕하세요. 인공신경망으로 화학 계산을 가속하는 방법을 발표하겠습니다.
+          핵심은 "에너지를 함수로 학습하고, 그 미분으로 힘을 얻어 분자 구조를 예측한다"입니다.
+        </aside>
+      </section>
+
+      <!-- ====================== 1. 목차 (베이스토 · 클릭 이동) ====================== -->
+      <section data-index="1">
+        <p class="kicker">OVERVIEW · 목차</p>
+        <h2>오늘 다룰 것</h2>
+        <div class="bento">
+          <a class="tile big" href="#/2">
+            <span class="t-num">01</span>
+            <span class="t-title">왜 ML로 분자를 예측하나</span>
+            <span class="t-desc">신약 개발 · 계산 비용</span>
+          </a>
+          <a class="tile accent" href="#/4">
+            <span class="t-num">02</span>
+            <span class="t-title">비용의 벽 · 병렬화</span>
+            <span class="t-desc">직렬 vs 병렬 데모 ▶</span>
+          </a>
+          <a class="tile" href="#/5">
+            <span class="t-num">03</span>
+            <span class="t-title">모델 계보</span>
+            <span class="t-desc">직접 vs 에너지 기반</span>
+          </a>
+          <a class="tile" href="#/7">
+            <span class="t-num">04</span>
+            <span class="t-title">왜 학습 가능한가</span>
+            <span class="t-desc">함수 근사 · 외삽 한계</span>
+          </a>
+          <a class="tile" href="#/11">
+            <span class="t-num">05</span>
+            <span class="t-title">모델 입·출력</span>
+            <span class="t-desc">원자 → NN → 에너지</span>
+          </a>
+          <a class="tile coral" href="#/13">
+            <span class="t-num">06</span>
+            <span class="t-title">힘 → 구조</span>
+            <span class="t-desc">미분 · MD 릴랙세이션</span>
+          </a>
+        </div>
+        <aside class="notes">전체 흐름입니다. Intro에서 동기를, 수학에서 원리를, 모델에서 실제 구현을 봅니다.</aside>
+      </section>
+
+      <!-- ====================== 2. 왜 ML인가 ====================== -->
+      <section data-index="2">
+        <p class="kicker">01 · INTRO</p>
+        <h2>왜 ML로 분자 구조를 예측하나</h2>
+        <div class="split">
+          <div class="pane lead">
+            <p class="huge-stat"><span class="hl">10년+</span></p>
+            <p>신약 하나를 개발하는 데 걸리는 시간. 가능한 분자는 사실상 <strong>무한</strong>합니다.</p>
+            <p>실험으로 일일이 확인 대신 — <strong>컴퓨터로 먼저 거른다.</strong></p>
+          </div>
+          <div class="pane">
+            <div class="mini-bento">
+              <div class="card hoverable">
+                <span class="card-tag mono">CASE 01</span>
+                <h3>AlphaFold</h3>
+                <p>단백질 구조 예측을 단숨에 바꿈</p>
+              </div>
+              <div class="card hoverable">
+                <span class="card-tag mono">CASE 02</span>
+                <h3>HyperLab</h3>
+                <p>분자 설계 · 후보 탐색 가속</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <aside class="notes">
+          신약 개발은 보통 10년 넘게 걸립니다. AlphaFold가 단백질 구조 예측을 바꿔놓은 것처럼,
+          분자 구조를 빠르게 예측하면 실험 후보를 미리 좁혀 개발을 크게 앞당길 수 있습니다.
+        </aside>
+      </section>
+
+      <!-- ====================== 3. 이론상 계산 가능 ====================== -->
+      <section data-index="3">
+        <p class="kicker">01 · INTRO</p>
+        <h2>이론적으로는 계산 가능하다</h2>
+        <p class="lead-line">분자 사이에 작용하는 <strong>힘을 기술하는 식</strong>은 이미 많이 있다.</p>
+        <div class="pipeline">
+          <div class="node"><span class="n-label mono">STATE</span>상태<small>원자 위치</small></div>
+          <span class="link">→</span>
+          <div class="node"><span class="n-label mono">FORCE</span>힘</div>
+          <span class="link">→</span>
+          <div class="node"><span class="n-label mono">MOTION</span>운동</div>
+          <span class="link">→</span>
+          <div class="node final"><span class="n-label mono">RESULT</span>구조</div>
+        </div>
+        <p class="note">물리 법칙으로 분자가 어디로 움직일지 시뮬레이션할 수 있다. 문제는 원리가 아니라 <strong>속도</strong>.</p>
+        <aside class="notes">
+          원리는 이미 알려져 있습니다. 퍼텐셜·힘의 식으로 상태에서 힘을 구해 원자를 움직이면 구조를
+          시뮬레이션할 수 있죠. 문제는 원리가 아니라 속도입니다.
+        </aside>
+      </section>
+
+      <!-- ====================== 4. 비용의 벽 + 인터랙티브 직렬/병렬 데모 ====================== -->
+      <section data-index="4">
+        <p class="kicker">02 · INTRO</p>
+        <h2>비용의 벽 — 직렬 vs <span class="hl">병렬</span></h2>
+        <div id="spDemo" class="sp-demo">
+          <div class="lane serial">
+            <div class="lane-head">
+              <span class="lane-name mono">CPU · 직렬</span>
+              <span class="readout">시간 <b data-time="cpu">0.00s</b></span>
+            </div>
+            <div class="paint-grid" id="gridCpu"></div>
+            <p class="lane-note">한 픽셀씩 칠한다 — 느리다</p>
+          </div>
+          <div class="lane parallel">
+            <div class="lane-head">
+              <span class="lane-name mono">GPU · 병렬</span>
+              <span class="readout">시간 <b data-time="gpu">0.00s</b></span>
+            </div>
+            <div class="paint-grid" id="gridGpu"></div>
+            <p class="lane-note">한 번에 칠한다 — 병렬</p>
+          </div>
+        </div>
+        <div class="demo-bar">
+          <button class="runbtn">▶ 실행</button>
+          <span class="verdict mono"></span>
+          <a class="ref-fig" href="https://www.youtube.com/watch?v=USSTy_9lAXw" target="_blank" rel="noopener">
+            <img src="assets/nvidia.svg" alt="NVIDIA" onerror="this.classList.add('broken')">
+            <span class="ref-cap mono">참고: NVIDIA × Mythbusters GPU vs CPU ↗</span>
+          </a>
+        </div>
+        <aside class="notes">
+          기존 정밀 계산은 순차적이라 주로 CPU에서 하나씩 처리합니다 — 그림을 한 픽셀씩 칠하듯 느리죠.
+          실행 버튼을 누르면 왼쪽 CPU는 한 칸씩, 오른쪽 GPU는 한 번에 칠합니다. NVIDIA가 Mythbusters와
+          한 유명한 시연에서 GPU는 페인트볼 1100발을 한꺼번에 쏴 모나리자를 80밀리초에 그렸습니다(원본
+          영상 링크). 신경망도 행렬 곱 위주라 GPU에서 대규모 병렬이 가능합니다 — 이게 ML을 쓰는 핵심
+          이유입니다.
+        </aside>
+      </section>
+
+      <!-- ====================== 5. 모델 계보 (병렬 비교) ====================== -->
+      <section data-index="5">
+        <p class="kicker">03 · INTRO</p>
+        <h2>현대 모델 계보</h2>
+        <div class="duo">
+          <div class="duo-card hoverable">
+            <span class="duo-num mono">①</span>
+            <h3>직접 예측 <small>end-to-end</small></h3>
+            <p>구조를 <strong>한 번에 팍</strong> 출력</p>
+            <ul class="tags"><li>빠름</li><li class="bad">블랙박스</li></ul>
+          </div>
+          <div class="duo-card ours hoverable">
+            <span class="duo-num mono">②</span>
+            <h3>에너지 기반 <small class="ours-tag">OURS</small></h3>
+            <p>에너지 학습 → 힘 → 구조</p>
+            <ul class="tags"><li>전통적</li><li>물리적</li><li class="good">설명 가능</li></ul>
+          </div>
+        </div>
+        <aside class="notes">
+          모델은 크게 두 갈래입니다. 구조를 한 번에 출력하는 직접 예측은 빠르지만 블랙박스입니다.
+          저희가 택한 에너지 기반은 물리 법칙을 따르므로 더 전통적이고 해석 가능합니다.
+        </aside>
+      </section>
+
+      <!-- ====================== 6. 챕터: 수학 ====================== -->
+      <section class="divider" data-index="6">
+        <p class="big-chapter mono">01</p>
+        <h2>수학<span class="div-sub">왜 학습이 가능한가</span></h2>
+        <aside class="notes">신경망이 왜 화학 에너지를 흉내 낼 수 있는지 수학적으로 봅니다.</aside>
+      </section>
+
+      <!-- ====================== 7. E = f(상태) ====================== -->
+      <section data-index="7">
+        <p class="kicker">04 · 수학</p>
+        <h2>상태가 주어지면 에너지는 함수다</h2>
+        <div class="split">
+          <div class="pane formula-card">
+            \[ E = f(\mathbf{R}) \]
+          </div>
+          <div class="pane">
+            <ul class="big-list">
+              <li><span class="mono">𝐑</span> = 원자 배치(상태). 정해지면 에너지는 <strong>하나의 값</strong></li>
+              <li>신경망 = <strong>보편 함수 근사기</strong></li>
+              <li>→ 이 \(f\)를 학습으로 흉내 낼 수 있다</li>
+            </ul>
+          </div>
+        </div>
+        <aside class="notes">
+          원자 배치가 정해지면 에너지는 유일하게 결정됩니다 — 에너지는 상태의 함수죠. 신경망은
+          충분히 크면 어떤 연속 함수든 근사할 수 있습니다(보편 근사). 그래서 이 함수를 모사할 수 있습니다.
+        </aside>
+      </section>
+
+      <!-- ====================== 8. 함수 모사 예시 (차트 베이스토) ====================== -->
+      <section data-index="8">
+        <p class="kicker">04 · 수학</p>
+        <h2>작은 신경망으로도 잘 맞는다</h2>
+        <div class="chart-bento">
+          <figure class="chart-card hoverable">
+            <canvas id="chartSin" width="300" height="210"></canvas>
+            <figcaption>sin 함수 근사</figcaption>
+          </figure>
+          <figure class="chart-card hoverable">
+            <canvas id="chartCircle" width="300" height="210"></canvas>
+            <figcaption>2D 평면의 원 (경계)</figcaption>
+          </figure>
+          <figure class="chart-card hoverable">
+            <canvas id="chartKNO3" width="300" height="210"></canvas>
+            <figcaption>KNO₃ 용해도 vs 온도</figcaption>
+          </figure>
+        </div>
+        <p class="note">단층·이층 신경망 → 작아서 <strong>해석 가능</strong>. (값은 예시)</p>
+        <aside class="notes">
+          단층·이층짜리 작은 신경망으로도 사인 함수, 평면 위 원의 경계, 온도에 따른 질산칼륨 용해도를
+          잘 근사합니다. 모델이 작으니 내부를 해석하기도 쉽습니다.
+        </aside>
+      </section>
+
+      <!-- ====================== 9. 외삽 한계 ====================== -->
+      <section data-index="9">
+        <p class="kicker">04 · 수학</p>
+        <h2>한계: <span class="hl">외삽</span> <span class="mono" style="font-size:.5em;color:var(--ink-soft)">extrapolation</span></h2>
+        <div class="split wide-left">
+          <figure class="pane chart-card">
+            <canvas id="chartExtrap" width="640" height="320"></canvas>
+          </figure>
+          <div class="pane">
+            <p>학습 범위 <span class="chip-in mono">안</span>은 정확.</p>
+            <p><span class="chip-out mono">밖</span>은 빗나간다.</p>
+            <p class="note">→ 우리 모델의 한계를 <em>정확히 안다.</em> 그러나 데이터 기반이라 구조적으로 불가피.</p>
+          </div>
+        </div>
+        <aside class="notes">
+          신경망은 학습 범위 안에서는 잘 맞지만 바깥(외삽)에서는 급격히 빗나갑니다. 회색 영역이 학습
+          범위입니다. 다만 저희는 이 한계가 어디서 왜 생기는지 정확히 알고, 이건 데이터 기반 모델의
+          구조적 특성입니다.
+        </aside>
+      </section>
+
+      <!-- ====================== 10. 챕터: 모델 ====================== -->
+      <section class="divider" data-index="10">
+        <p class="big-chapter mono">02</p>
+        <h2>모델<span class="div-sub">무엇을 넣고 무엇이 나오나</span></h2>
+        <aside class="notes">실제 모델의 입력·출력과 학습 방법을 봅니다.</aside>
+      </section>
+
+      <!-- ====================== 11. Input/Output + 학습 ====================== -->
+      <section data-index="11">
+        <p class="kicker">05 · 모델</p>
+        <h2>입력과 출력, 그리고 학습</h2>
+        <div class="io-schema big">
+          <div class="box">원자 종류 <small>(embedding)</small><br>+ 좌표 <small>(x, y, z)</small></div>
+          <span class="arrow">→</span>
+          <div class="box nn">신경망</div>
+          <span class="arrow">→</span>
+          <div class="box accent">에너지 \(E\)</div>
+        </div>
+        <div class="train-row">
+          <div class="train-card"><span class="card-tag mono">주 신호</span> (구조 → 에너지) 쌍을 맞춤</div>
+          <div class="train-card"><span class="card-tag mono coral-tag">보조 신호</span> 힘(force)도 함께 — <em>어떻게? 곧.</em></div>
+        </div>
+        <aside class="notes">
+          입력은 원소 임베딩과 xyz 좌표, 출력은 그 상태의 에너지 하나입니다. 학습은 (구조,에너지) 쌍을
+          맞추되, 각 원자의 힘도 보조 신호로 함께 썼습니다. 왜 힘이 중요한지는 바로 다음에 설명합니다.
+        </aside>
+      </section>
+
+      <!-- ====================== 12. 큰 질문 ====================== -->
+      <section class="big-question" data-index="12">
+        <p class="q-mark">?</p>
+        <h2>에너지<span class="hl">만</span> 내놓는 모델이<br>어떻게 분자 구조를 예측하지?</h2>
+        <aside class="notes">자연스러운 의문입니다. 숫자 하나(에너지)만 출력하는데 어떻게 안정 구조를 찾을까요?</aside>
+      </section>
+
+      <!-- ====================== 13. 답: 힘 = 에너지의 기울기 ====================== -->
+      <section data-index="13">
+        <p class="kicker">06 · 모델</p>
+        <h2>답: 힘은 에너지의 기울기</h2>
+        <div class="split">
+          <div class="pane formula-card">
+            \[ \mathbf{F}_i = -\frac{\partial E}{\partial \mathbf{r}_i} \]
+          </div>
+          <div class="pane">
+            <ul class="big-list">
+              <li>에너지를 좌표로 <strong>미분</strong> → 그 원자의 힘</li>
+              <li>모델 하나면 <strong>자동 미분</strong>으로 모든 힘을 공짜로</li>
+              <li>이 힘이 바로 학습의 <span class="hl">보조 신호</span></li>
+            </ul>
+          </div>
+        </div>
+        <aside class="notes">
+          답은 미분입니다. 에너지를 각 원자 좌표로 미분하고 부호를 뒤집으면 힘이 나옵니다. 원자가
+          여럿이라 편미분이죠. 에너지 모델 하나만 있으면 자동 미분으로 모든 힘을 얻고, 이 힘이 아까
+          말한 학습의 보조 신호였습니다.
+        </aside>
+      </section>
+
+      <!-- ====================== 14. MD 릴랙세이션 루프 ====================== -->
+      <section data-index="14">
+        <p class="kicker">06 · 모델</p>
+        <h2>구조를 찾는 반복</h2>
+        <div class="split wide-right">
+          <ol class="cycle pane">
+            <li>각 원자의 <strong>힘</strong> 계산</li>
+            <li>Δt 동안 힘 <strong>불변 가정</strong> <small>(예 0.1s)</small></li>
+            <li>원자 <strong>위치</strong> 물리적으로 갱신</li>
+            <li>에너지·힘 <strong>재계산</strong> → 반복 ↻</li>
+          </ol>
+          <figure class="pane chart-card">
+            <canvas id="chartConverge" width="360" height="260"></canvas>
+            <figcaption>반복할수록 에너지 ↓ — 평형 수렴</figcaption>
+          </figure>
+        </div>
+        <p class="note">평형에 가까울수록 Δt를 줄여 정확도 ↑</p>
+        <aside class="notes">
+          힘을 계산하고, 아주 짧은 시간 힘이 일정하다 가정해 원자를 살짝 움직입니다. 다시 에너지·힘을
+          구하고 또 움직이고를 반복하면 에너지가 낮아지며 평형 구조로 수렴합니다. 평형 근처에선 Δt를
+          줄여 정밀하게 마무리합니다.
+        </aside>
+      </section>
+
+      <!-- ====================== 15. 정리 ====================== -->
+      <section data-index="15">
+        <p class="kicker">SUMMARY · 정리</p>
+        <h2>한 줄로</h2>
+        <div class="io-schema summary">
+          <div class="box">에너지 학습</div><span class="arrow">→</span>
+          <div class="box">미분</div><span class="arrow">→</span>
+          <div class="box">힘</div><span class="arrow">→</span>
+          <div class="box">MD 반복</div><span class="arrow">→</span>
+          <div class="box accent">구조</div>
+        </div>
+        <div class="take-bento">
+          <div class="card good-card"><span class="card-tag mono">FAST</span>빠르다<small>GPU 병렬</small></div>
+          <div class="card"><span class="card-tag mono">CLEAR</span>설명 가능<small>물리(에너지·힘) 기반</small></div>
+          <div class="card warn-card"><span class="card-tag mono">LIMIT</span>외삽 한계<small>학습 범위 밖</small></div>
+        </div>
+        <p class="thanks">감사합니다 · <span class="mono">Q&amp;A</span></p>
+        <aside class="notes">
+          정리하면, 에너지를 학습하고 미분으로 힘을 얻어 분자를 평형까지 움직입니다. 빠르고 설명
+          가능하며, 외삽이라는 분명한 한계가 있습니다. 감사합니다.
+        </aside>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+  <!-- Reveal core + 플러그인 -->
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/math/math.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/notes/notes.js"></script>
+  <!-- 프로젝트 스크립트 -->
+  <script src="js/charts.js"></script>
+  <script src="js/interactions.js"></script>
+
+  <script>
+    Reveal.initialize({
+      hash: true,
+      width: 1280,
+      height: 720,
+      margin: 0.045,
+      // --- 규칙: AI 느낌의 느린 페이드 금지 ---
+      transition: 'slide',
+      transitionSpeed: 'fast',
+      backgroundTransition: 'none',
+      fragments: false,
+      controls: true,
+      progress: true,
+      slideNumber: 'c/t',
+      plugins: [ RevealMath.MathJax3, RevealNotes ]
+    }).then(() => {
+      if (window.buildCharts) window.buildCharts();
+      if (window.initInteractions) window.initInteractions();
+    });
+    Reveal.on('slidechanged', (e) => {
+      if (window.resizeChartsIn) window.resizeChartsIn(e.currentSlide);
+    });
+  </script>
+</body>
+</html>
