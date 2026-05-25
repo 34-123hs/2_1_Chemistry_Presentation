@@ -5,20 +5,6 @@ import torch.nn.functional as F
 from torch.utils.data import TensorDataset, DataLoader
 from einops import rearrange
 
-mol = next(iter_molecules())
-print(mol.keys())
-
-print(mol["formula"])
-print(mol["atomic_numbers"].shape)
-print(mol["coordinates"].shape)
-print(mol["energy"].shape)
-
-#데이터셋 짰다 치고
-
-
-mols = torch.randint(0, 4, [1, 5]) #b, n
-coords = torch.randn([1, 5, 3]) #[b, n, 3]
-
 class Chemical_Model(nn.Module):
     def __init__(self, dim, rel_dim, num_atoms):
         '''
@@ -41,6 +27,48 @@ class Chemical_Model(nn.Module):
 
         self.bigeps = 1e-5
         self.eps = 1e-7
+
+        #St1
+        
+        self.rms = nn.RMSNorm(rel_dim)
+
+        self.layer_nri1 = nn.Sequential( # Not rotationally invariant
+            nn.Linear(rel_dim, rel_dim * 4),
+            nn.GELU(),
+            nn.Linear(rel_dim*4, rel_dim),
+            nn.GELU(),
+            )
+        
+        self.layer_nri2 = nn.Sequential( # Not rotationally invariant
+            nn.RMSNorm(rel_dim),
+            nn.Linear(rel_dim, rel_dim * 4),
+            nn.GELU(),
+            nn.Linear(rel_dim*4, rel_dim),
+            nn.GELU(),
+            )
+        
+        #St2
+        st2_dim = dim + rel_dim
+
+        self.layer_ri1 = nn.Sequential( # rotationally invariant
+            nn.RMSNorm(st2_dim),
+            nn.Linear(st2_dim, st2_dim * 4),
+            nn.GELU(),
+            nn.Linear(st2_dim*4, st2_dim),
+            nn.GELU(),
+            )
+        
+        self.layer_ri2 = nn.Sequential( # rotationally invariant
+            nn.RMSNorm(st2_dim),
+            nn.Linear(st2_dim, st2_dim * 4),
+            nn.GELU(),
+            nn.Linear(st2_dim*4, st2_dim),
+            nn.GELU(),
+            )
+        
+        # Step 3
+        self.ENERGY = nn.Linear(st2_dim, 1) # 이 친구가 구하는 값이 에너지 라고 보기
+
 
     
     def to_RCS(self, x): #Relative Coordinate System
@@ -84,7 +112,13 @@ class Chemical_Model(nn.Module):
         # ^ [b, n, n] # 대각 성분 0
 
         #거리를 고려한 분자간 상호작용 크기 구하기 Step1-2 (함수 이름 뜻이 이거임)
-        relative_btw_atom = self.make_relative_btw_atom_consider_length(molecules, rec_distances) # [b, n, n, rel_dim]
+        relative_btw_atom = self.make_relative_btw_atom_consider_length(molecules, rec_distances)
+        # ^[b, n, n, rel_dim]
+
+        relative_btw_atom = self.rms(relative_btw_atom)
+        relative_btw_atom = relative_btw_atom + self.layer_nri1(relative_btw_atom)
+        relative_btw_atom = relative_btw_atom + self.layer_nri2(relative_btw_atom)
+        # ^[b, n, n, rel_dim]
 
         #힘에 대한 방향 벡터 제작 Step1-3
         rcs_unit = rcs / rec_distances[: ,:, :, None]
@@ -92,8 +126,19 @@ class Chemical_Model(nn.Module):
 
         #회전 시키기 Step 1 마무리
         relative_btw_atom = relative_btw_atom[:, :, :, :, None] * rcs_unit[:, :, :, None, :]
-
+    
         return relative_btw_atom
+
+    def Step2(self, x):
+        '''
+        걍 대충 mlp 짜그리기
+        '''
+        x = x + self.layer_ri1(x)
+        x = x + self.layer_ri2(x)
+
+        return x
+ 
+
     def forward(self, molecules, coords):
         '''
         b: batch_size
@@ -102,10 +147,42 @@ class Chemical_Model(nn.Module):
         molecules: [b, n]
         coords: [b, n , 3]
         '''
-        relative_btw_atom = self.Step1(molecules, coords)
+        relative_btw_atom = self.Step1(molecules, coords) #각 단위거리에 정의된 물리학적 영향에 거리, 방향을 고려한 벡터
+        # ^[b, n, n, rel_dim, 3]
 
-        return relative_btw_atom
+        relative_btw_atom = rearrange(relative_btw_atom, "b n m r t -> b n r t m") # n = m
+        # ^[b, n, 3, rel_dim, n]
 
-model = Chemical_Model(dim=128, rel_dim=48, num_atoms=4) #rel_dim 나중에 내부적으로 크기 3배됨
+        relative_btw_atom = torch.sum(relative_btw_atom, dim=-1) # 각 물리학적 영향을 '합한다' 즉, 물리학적 영향 벡터들을 합한다
+        # ^[b, n, rel_dim, 3]
 
-print(model(mols, coords).shape)
+        relative_btw_atom = torch.pow(torch.matmul(relative_btw_atom[:, :, :, None, :], relative_btw_atom[:, :, :, :, None]).squeeze(-1).squeeze(-1)+ self.bigeps, 0.5)
+        # ^[b, n, rel_dim]
+
+        # 이제 이럼으로서 회전 동등하게 학습 가능함
+        relative_btw_atom = torch.cat([self.emb(molecules), relative_btw_atom], dim=-1)
+        # ^[b, n , dim+rel_dim]
+        
+        relative_btw_atom = self.Step2(relative_btw_atom)
+        ENERGY = self.ENERGY(relative_btw_atom).squeeze(-1)
+        return torch.sum(ENERGY, dim = -1)
+
+if __name__ == '__main__':
+    mol = next(iter_molecules())
+    print(mol.keys())
+
+    print(mol["formula"])
+    print(mol["atomic_numbers"].shape)
+    print(mol["coordinates"].shape)
+    print(mol["energy"].shape)
+
+    #데이터셋 짰다 치고
+
+
+    mols = torch.randint(0, 4, [10, 5]) #b, n
+    coords = torch.randn([10, 5, 3]) #[b, n, 3]
+
+
+    model = Chemical_Model(dim=128, rel_dim=128, num_atoms=4) #rel_dim 나중에 내부적으로 크기 3배됨
+
+    print(model(mols, coords).shape)
