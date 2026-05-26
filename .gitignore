@@ -2,3 +2,27 @@ model/ani1x-release.h5
 model/CLAUDE.md
 model/explore_ani1x.py
 CLAUDE.md
+
+# Python
+__pycache__/
+*.py[cod]
+
+# 가상환경
+venv/
+.venv/
+env/
+
+# 모델 체크포인트 / 대용량 산출물 (GitHub 100MB 제한)
+*.pt
+*.pth
+*.ckpt
+*.h5
+
+# 학습 로그 / 실험 추적
+*.log
+wandb/
+
+# OS / 에디터
+.DS_Store
+.idea/
+.vscode/

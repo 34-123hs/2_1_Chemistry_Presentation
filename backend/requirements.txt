@@ -2,6 +2,8 @@
 fastapi>=0.110
 uvicorn[standard]>=0.29
 pydantic>=2.6
+numpy>=1.24
+einops>=0.7        # model.py (rearrange)
+h5py>=3.8          # preprocess.py import 시점에 필요(추론엔 데이터셋 자체는 불필요)
 # GPU(CUDA) 빌드는 환경에 맞게 https://pytorch.org/get-started/ 에서 설치할 것
 torch>=2.2
-numpy>=1.24

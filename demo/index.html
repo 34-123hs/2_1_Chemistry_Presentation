@@ -130,9 +130,8 @@
   const ELEMENTS = {
     H: {c:"#e9e9ee", t:"#333"}, C: {c:"#33363b", t:"#fff"},
     N: {c:"#3050f8", t:"#fff"},  O: {c:"#ff2d2d", t:"#fff"},
-    F: {c:"#7fe060", t:"#234"},
   };
-  const TARGET = 72;     // 목표 간격(px) — 로컬 완화 기준
+  const DRIFT  = 5;      // 한 스텝당 무작위 이동량(px) — 작을수록 느림
   const TICK   = 180;    // 스텝 간격(ms)
   const R      = 20;     // 원자 반경(경계 클램프용)
 
@@ -210,26 +209,13 @@
     });
   }
 
-  // --- 로컬 플레이스홀더 동역학 (백엔드 폴백) ---
+  // --- 로컬 동역학 (백엔드 폴백): 모델이 없으니 느린 무작위 이동 ---
   function localStep() {
-    const n = atoms.length, cx = stage.clientWidth / 2, cy = stage.clientHeight / 2;
-    const next = atoms.map((a) => ({ x: a.x, y: a.y }));
-    let energy = 0;
-    for (let i = 0; i < n; i++) {
-      let fx = 0, fy = 0;
-      for (let j = 0; j < n; j++) {
-        if (i === j) continue;
-        const dx = atoms[i].x - atoms[j].x, dy = atoms[i].y - atoms[j].y;
-        const d = Math.hypot(dx, dy) || 1e-3;
-        const mag = -(d - TARGET) / TARGET;        // 가까우면 밀고, 멀면 당김
-        fx += (dx / d) * mag; fy += (dy / d) * mag;
-        energy += (d - TARGET) * (d - TARGET);
-      }
-      fx += (cx - atoms[i].x) * 0.02; fy += (cy - atoms[i].y) * 0.02; // 약한 센터링
-      next[i].x = atoms[i].x + fx * 0.9;
-      next[i].y = atoms[i].y + fy * 0.9;
-    }
-    return { next, energy: energy * 0.5 };
+    const next = atoms.map((a) => ({
+      x: a.x + (Math.random() * 2 - 1) * DRIFT,
+      y: a.y + (Math.random() * 2 - 1) * DRIFT,
+    }));
+    return { next, energy: undefined };  // 무작위 이동이라 energy는 표시 안 함
   }
 
   // --- 한 스텝: 백엔드(/step) 또는 로컬 ---
@@ -292,7 +278,7 @@
   function setMode(kind, label) {
     const b = document.getElementById("modeBadge");
     b.className = "badge " + kind;
-    b.textContent = kind === "live" ? "EC2 연결됨" : kind === "err" ? "연결 실패(로컬)" : "데모(로컬 계산)";
+    b.textContent = kind === "live" ? "EC2 연결됨" : kind === "err" ? "연결 실패(로컬)" : "데모(무작위 이동)";
     setStatus(label || "");
   }
 
