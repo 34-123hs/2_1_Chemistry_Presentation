@@ -147,8 +147,8 @@ app = FastAPI(title="NNP 추론 API", version="0.2.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        # TODO: 허용할 프론트엔드 출처를 여기에 채워 넣을 것
-        # 예) "https://34-123hs.github.io",
+        "https://34-123hs.github.io",   # 배포된 데모(GitHub Pages)
+        "http://localhost:8000",        # 로컬 데모 테스트
     ],
     allow_credentials=False,
     allow_methods=["*"],
